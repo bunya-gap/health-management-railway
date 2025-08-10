@@ -53,6 +53,64 @@ except Exception as e:
   Reports will be saved to: /app/reports
   ```
 
+### **🚨 緊急対応中（2025/8/10 16:35）**
+
+#### **現在の問題状況**
+- **元サービス**: health-app-public（Volume付き・過去データあり）→ デプロイ失敗
+- **新サービス**: health-server-v2（新規作成）→ デプロイ成功だが過去データなし
+- **Volume**: 元サービスにのみ過去データ保持
+
+#### **実行中の修復作業**
+- ✅ **元サービス設定修正**: 開始コマンド修正完了
+- 🔄 **元サービス再デプロイ**: 実行中（ID: 397458a1-3953-4e2c-be76-d5fa50d8bcf0）
+- ⏳ **修復確認待ち**: デプロイ成功確認必要
+
+#### **💡 チャット切れ後の対応手順**
+1. **元サービスデプロイ確認**: Railway → health-app-public → Deployments
+2. **成功した場合**:
+   - 元サービスURL使用: `https://health-app-public-production.up.railway.app/health-data`
+   - HAE設定変更: 上記URLに切り替え
+   - 新サービス削除: health-server-v2 不要
+3. **失敗した場合**:
+   - 新サービス使用: `https://health-server-v2-production.up.railway.app/health-data`
+   - 過去データ移行検討: Volume間でのデータ移行
+4. **疎通テスト**: 16:58頃のHAE配信で確認
+
+#### **🎯 最終目標**
+- **URL確定**: HAE設定で使用するクラウドURL
+- **過去データ保護**: Volumeでの継続性確保
+- **クラウド化完了**: PC不要の健康管理システム
+
+#### **📝 重要事項**
+- **元サービスURL**: health-app-public-production.up.railway.app
+- **新サービスURL**: health-server-v2-production.up.railway.app
+- **過去データLocation**: 元サービスのVolume内
+- **環境変数**: 両サービスとも設定済み
+
+#### **🚨 元サービス失敗時の緊急手順**
+- **元サービスデプロイ**: 再度失敗 → 新サービス使用確定
+- **使用URL**: `https://health-server-v2-production.up.railway.app/health-data`
+- **HAE設定**: 上記URLに変更してクラウド化完了
+- **過去データ**: 一時的に新環境で開始、後日移行検討
+
+#### **⚡ 即座に実行すべきこと**
+1. **HAE URL変更**: health-server-v2-production.up.railway.app/health-data
+2. **疎通テスト**: 16:58頃の配信で確認
+3. **クラウド化完了**: PC電源OFF可能
+
+#### **🛠️ 後日対応事項**
+- 元サービス修復再挑戦
+- 過去データVolumeからの移行
+- 不要サービス削除
+
+---
+
+**クラウド化URL決定**: `https://health-server-v2-production.up.railway.app/health-data`  
+**緊急更新**: 2025/8/10 16:36  
+**実行者**: terada  
+
+---
+
 ### **⏳ 次のステップ（実行待ち）**
 1. **デプロイ完了確認**: 新ログメッセージ確認
 2. **HAE設定変更**: 
