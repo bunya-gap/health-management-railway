@@ -1,0 +1,1 @@
+web: gunicorn health_data_server:app --bind 0.0.0.0:$PORT

@@ -1,0 +1,75 @@
+{
+  "generated_at": "2025-08-10T12:58:35.941246",
+  "data_period": {
+    "start_date": "2025-06-01",
+    "end_date": "2025-08-10",
+    "total_days": 71
+  },
+  "kgi_progress": {
+    "analysis_date": "2025-08-10",
+    "start_bf_rate": 18.8,
+    "current_bf_rate": 17.8,
+    "target_bf_rate": 12.0,
+    "reduction_achieved": 1.0,
+    "total_reduction_needed": 6.8,
+    "progress_rate": 14.7,
+    "progress_bar": "[██▌░░░░░░░░░░░░░░░░░] 14.7% / 100%",
+    "weekly_reduction_rate": -0.034,
+    "target_date": "現在のペースでは到達困難"
+  },
+  "last_28days": {
+    "period_days": 28,
+    "actual_data_days": 28,
+    "body_fat_mass_change": -0.34,
+    "body_fat_reduction_rate_per_day": -0.012,
+    "muscle_mass_change": -0.25,
+    "muscle_rate_per_day": -0.009,
+    "calorie_balance_total": -5402.0,
+    "calorie_balance_avg": -200.1,
+    "total_intake_calories": 58755.0,
+    "total_consumed_calories": 64158.0
+  },
+  "last_14days": {
+    "period_days": 14,
+    "actual_data_days": 14,
+    "body_fat_mass_change": -0.2,
+    "body_fat_reduction_rate_per_day": -0.014,
+    "muscle_mass_change": -0.13,
+    "muscle_rate_per_day": -0.009,
+    "calorie_balance_total": -1680.0,
+    "calorie_balance_avg": -129.3,
+    "total_intake_calories": 29005.0,
+    "total_consumed_calories": 30686.0
+  },
+  "last_7days": {
+    "period_days": 7,
+    "actual_data_days": 7,
+    "body_fat_mass_change": 0.47,
+    "body_fat_reduction_rate_per_day": 0.067,
+    "muscle_mass_change": 0.32,
+    "muscle_rate_per_day": 0.046,
+    "calorie_balance_total": 1104.0,
+    "calorie_balance_avg": 183.9,
+    "total_intake_calories": 14659.0,
+    "total_consumed_calories": 13556.0
+  },
+  "metabolism_analysis": {
+    "fat_loss_28d": -0.34,
+    "fat_loss_14d": -0.2,
+    "fat_loss_7d": 0.47,
+    "body_temp_change": -0.1,
+    "metabolism_status": "normal",
+    "cheat_day_recommended": false,
+    "stall_days": 0
+  },
+  "calorie_adjustment": {
+    "deficit_7d": 2104.0,
+    "deficit_14d": 320.0,
+    "daily_adjustment": 301.0,
+    "exercise_options": {
+      "jogging_minutes": 30.0,
+      "walking_minutes": 60.0,
+      "strength_minutes": 33.0
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "generated_at": "2025-08-09T19:12:05.878946",
+  "data_period": {
+    "start_date": "2025-06-01",
+    "end_date": "2025-08-09",
+    "total_days": 70
+  },
+  "total_performance": {
+    "analysis_date": "2025-08-08",
+    "start_date": "2025-06-04",
+    "period_days": 65,
+    "weight_start": 64.9,
+    "weight_latest": 63.3,
+    "weight_change": -1.6,
+    "body_fat_rate_start": 18.8,
+    "body_fat_rate_latest": 17.7,
+    "body_fat_rate_change": -1.1,
+    "body_fat_mass_start": 12.2,
+    "body_fat_mass_latest": 11.2,
+    "body_fat_mass_change": -1.0,
+    "muscle_mass_start": 52.7,
+    "muscle_mass_latest": 52.1,
+    "muscle_mass_change": -0.6
+  },
+  "last_28days": {
+    "period_days": 28,
+    "actual_data_days": 28,
+    "body_fat_mass_change": -0.1,
+    "body_fat_reduction_rate_per_day": -0.004,
+    "muscle_mass_change": 0.0,
+    "muscle_rate_per_day": 0.0,
+    "calorie_balance_total": 6051.0,
+    "calorie_balance_avg": 224.1,
+    "total_intake_calories": 58544.0,
+    "total_consumed_calories": 52493.0
+  },
+  "last_14days": {
+    "period_days": 14,
+    "actual_data_days": 14,
+    "body_fat_mass_change": 0.0,
+    "body_fat_reduction_rate_per_day": 0.0,
+    "muscle_mass_change": 0.1,
+    "muscle_rate_per_day": 0.008,
+    "calorie_balance_total": 2834.0,
+    "calorie_balance_avg": 218.0,
+    "total_intake_calories": 28580.0,
+    "total_consumed_calories": 25746.0
+  },
+  "last_7days": {
+    "period_days": 7,
+    "actual_data_days": 7,
+    "body_fat_mass_change": 0.0,
+    "body_fat_reduction_rate_per_day": 0.0,
+    "muscle_mass_change": 0.1,
+    "muscle_rate_per_day": 0.017,
+    "calorie_balance_total": 3184.0,
+    "calorie_balance_avg": 530.7,
+    "total_intake_calories": 14722.0,
+    "total_consumed_calories": 11538.0
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "generated_at": "2025-08-09T16:48:53.653152",
+  "data_period": {
+    "start_date": "2025-06-01",
+    "end_date": "2025-08-09",
+    "total_days": 66
+  },
+  "total_performance": {
+    "analysis_date": "2025-08-09",
+    "period_days": 69,
+    "body_fat_rate_start": NaN,
+    "body_fat_rate_latest": 17.5,
+    "body_fat_rate_change": NaN,
+    "body_fat_mass_start": NaN,
+    "body_fat_mass_latest": 11.0,
+    "body_fat_mass_change": NaN,
+    "muscle_mass_start": NaN,
+    "muscle_mass_latest": 51.9,
+    "muscle_mass_change": NaN
+  },
+  "last_30days": {
+    "period_days": 30,
+    "actual_data_days": 26,
+    "body_fat_mass_start": 11.1,
+    "body_fat_mass_end": 11.0,
+    "body_fat_mass_change": -0.1,
+    "body_fat_reduction_rate_per_day": -0.004,
+    "calorie_balance_total": 1577.0,
+    "calorie_balance_avg": 63.1
+  },
+  "last_7days": {
+    "period_days": 7,
+    "actual_data_days": 3,
+    "body_fat_mass_start": 11.2,
+    "body_fat_mass_end": 11.0,
+    "body_fat_mass_change": -0.2,
+    "body_fat_reduction_rate_per_day": -0.067,
+    "calorie_balance_total": -1215.0,
+    "calorie_balance_avg": -607.4
+  }
+}
