@@ -24,17 +24,6 @@ if os.path.exists('/app/reports'):  # Railway Volume環境
     REPORTS_DIR = '/app/reports'
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
-# Railway環境での起動時Volume初期化（Gunicorn対応）
-try:
-    initialize_volume_data()
-    print(f"Volume initialization completed in {REPORTS_DIR}!")
-    print("Health Auto Export Data Server Starting...")
-    print(f"Data will be saved to: {DATA_DIR}")
-    print(f"Reports will be saved to: {REPORTS_DIR}")
-except Exception as e:
-    print(f"Volume initialization error: {e}")
-
-
 def initialize_volume_data():
     """
     Railway Volume初回起動時の過去データ移行処理
@@ -69,6 +58,16 @@ def initialize_volume_data():
         
     except Exception as e:
         print(f"Error during volume initialization: {e}")
+
+# Railway環境での起動時Volume初期化（Gunicorn対応）
+try:
+    initialize_volume_data()
+    print(f"Volume initialization completed in {REPORTS_DIR}!")
+    print("Health Auto Export Data Server Starting...")
+    print(f"Data will be saved to: {DATA_DIR}")
+    print(f"Reports will be saved to: {REPORTS_DIR}")
+except Exception as e:
+    print(f"Volume initialization error: {e}")
 
 def save_raw_data(data: Dict[str, Any]) -> str:
     """受信した生データをJSONファイルに保存"""
