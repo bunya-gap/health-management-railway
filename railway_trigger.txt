@@ -1,0 +1,4 @@
+# Railway Deploy Trigger
+# Force GitHub webhook activation
+timestamp = "2025-08-11 08:28"
+trigger_id = "railway-force-deploy-001"
