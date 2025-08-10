@@ -107,6 +107,21 @@ def process_health_metrics(metrics: List[Dict]) -> pd.DataFrame:
     
     return pd.DataFrame(processed_data) if processed_data else pd.DataFrame()
 
+@app.route('/', methods=['GET'])
+def root():
+    """ルートパス - Railway ヘルスチェック用"""
+    return jsonify({
+        'status': 'healthy',
+        'service': 'Health Data Server',
+        'version': '2.0',
+        'endpoints': {
+            'health_data_post': '/health-data (POST)',
+            'health_data_get': '/health-data (GET)', 
+            'health_check': '/health-check (GET)',
+            'latest_data': '/latest-data (GET)'
+        }
+    })
+
 @app.route('/health-data', methods=['POST'])
 def receive_health_data():
     """Health Auto Export からのデータ受信エンドポイント"""
