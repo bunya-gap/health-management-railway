@@ -1,5 +1,5 @@
 """
-🌐 Complete Cloud Health Management Server v3.1 - Debug Enhanced
+🌐 Complete Cloud Health Management Server v3.1 - CSV Analysis Enhanced
 ローカル依存ゼロ - 完全クラウド化統合システム
 
 【修正内容】:
@@ -7,9 +7,11 @@
 - エラーハンドリング詳細化
 - デバッグ情報追加
 - 処理状況可視化
+- CSV内容表示エンドポイント追加
 
 機能:
 - HAEデータ受信 → 即座変換・統合 → 分析 → LINE通知
+- CSV内容表示・期間別データ確認
 - 定期監視・メンテナンス（バックグラウンド）
 - 全処理をRailway環境で完結
 
@@ -450,13 +452,15 @@ def root():
         'status': 'healthy',
         'service': 'Complete Cloud Health Management Server',
         'version': '3.1',
-        'debug_mode': 'enhanced_logging',
-        'features': ['HAE Reception', 'Auto Analysis', 'LINE Notification'],
+        'debug_mode': 'csv_analysis_enhanced',
+        'features': ['HAE Reception', 'Auto Analysis', 'LINE Notification', 'CSV Content Display'],
         'endpoints': {
             'health_data': '/health-data (POST)',
             'health_check': '/health-check (GET)',
             'latest_data': '/latest-data (GET)',
-            'manual_analysis': '/manual-analysis (POST)'
+            'manual_analysis': '/manual-analysis (POST)',
+            'csv_content': '/csv-content (GET)',
+            'csv_dates': '/csv-dates (GET)'
         }
     })
 
@@ -589,12 +593,113 @@ def manual_analysis():
         logger.error(f"❌ 手動分析エラー: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+# ===== CSV表示エンドポイント（新機能） =====
+@app.route('/csv-content', methods=['GET'])
+def get_csv_content():
+    """CSV内容表示（日次データ・移動平均データ）"""
+    try:
+        logger.info("📊 CSV内容確認開始")
+        
+        reports_dir = Path(REPORTS_DIR)
+        daily_csv = reports_dir / "日次データ.csv"
+        ma7_csv = reports_dir / "7日移動平均データ.csv"
+        index_csv = reports_dir / "インデックスデータ.csv"
+        
+        result = {
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'files_status': {},
+            'csv_data': {}
+        }
+        
+        # ファイル存在確認
+        for name, path in [('daily', daily_csv), ('ma7', ma7_csv), ('index', index_csv)]:
+            if path.exists():
+                try:
+                    df = pd.read_csv(path, encoding='utf-8-sig')
+                    result['files_status'][name] = {
+                        'exists': True,
+                        'rows': len(df),
+                        'columns': len(df.columns)
+                    }
+                    
+                    # 最新10行を取得
+                    if len(df) > 0:
+                        latest_data = df.tail(10).to_dict('records')
+                        result['csv_data'][name] = {
+                            'columns': list(df.columns),
+                            'latest_10_rows': latest_data,
+                            'date_range': {
+                                'first': df.iloc[0]['date'] if 'date' in df.columns else 'N/A',
+                                'last': df.iloc[-1]['date'] if 'date' in df.columns else 'N/A'
+                            }
+                        }
+                    else:
+                        result['csv_data'][name] = {'message': 'Empty file'}
+                        
+                except Exception as e:
+                    result['files_status'][name] = {
+                        'exists': True,
+                        'error': str(e)
+                    }
+            else:
+                result['files_status'][name] = {'exists': False}
+        
+        logger.info(f"📋 CSV確認完了")
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"❌ CSV確認エラー: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/csv-dates', methods=['GET'])
+def get_csv_dates():
+    """指定期間のCSVデータ確認"""
+    try:
+        start_date = request.args.get('start_date', '2025-08-08')
+        end_date = request.args.get('end_date', '2025-08-11')
+        
+        logger.info(f"📅 期間指定CSV確認: {start_date} - {end_date}")
+        
+        reports_dir = Path(REPORTS_DIR)
+        daily_csv = reports_dir / "日次データ.csv"
+        
+        if not daily_csv.exists():
+            return jsonify({'error': 'Daily CSV file not found'}), 404
+        
+        df = pd.read_csv(daily_csv, encoding='utf-8-sig')
+        
+        # 期間フィルタリング
+        if 'date' in df.columns:
+            df['date'] = pd.to_datetime(df['date'])
+            mask = (df['date'] >= start_date) & (df['date'] <= end_date)
+            filtered_df = df.loc[mask]
+            
+            # 日付を文字列に戻す
+            filtered_df = filtered_df.copy()
+            filtered_df['date'] = filtered_df['date'].dt.strftime('%Y-%m-%d')
+            
+            result = {
+                'period': f"{start_date} to {end_date}",
+                'total_rows': len(filtered_df),
+                'data': filtered_df.to_dict('records')
+            }
+            
+            logger.info(f"📊 期間データ: {len(filtered_df)}行")
+            return jsonify(result)
+        else:
+            return jsonify({'error': 'Date column not found'}), 400
+            
+    except Exception as e:
+        logger.error(f"❌ 期間CSV確認エラー: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 # ===== アプリケーション初期化 =====
 def initialize_app():
     """アプリケーション初期化"""
-    logger.info("🌐 Complete Cloud Health Management Server v3.1")
+    logger.info("🌐 Complete Cloud Health Management Server v3.1 - CSV Enhanced")
     logger.info("=" * 60)
     logger.info("🎯 機能: HAE受信 → 変換 → 統合 → 分析 → LINE通知（完全自動）")
+    logger.info("📊 新機能: CSV内容表示・期間指定データ確認")
     logger.info(f"📱 LINE設定: {'✅完了' if LINE_BOT_TOKEN and LINE_USER_ID else '❌要設定'}")
     logger.info(f"🔍 Oura設定: {'✅完了' if OURA_TOKEN else '❌未設定'}")
     logger.info(f"📁 データディレクトリ: {DATA_DIR}")
@@ -612,5 +717,9 @@ if __name__ == '__main__':
     logger.info(f"📡 HAE送信先: http://localhost:{port}/health-data")
     logger.info(f"🔍 ヘルスチェック: http://localhost:{port}/health-check")
     logger.info(f"📊 手動分析: http://localhost:{port}/manual-analysis (POST)")
+    logger.info(f"📋 CSV内容確認: http://localhost:{port}/csv-content")
+    logger.info(f"📅 期間データ確認: http://localhost:{port}/csv-dates?start_date=2025-08-08&end_date=2025-08-11")
     
     app.run(host='0.0.0.0', port=port, debug=False)
+
+✅ 😀 𠮷 👨‍👩‍👧‍👦
