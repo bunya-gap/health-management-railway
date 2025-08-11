@@ -1,6 +1,12 @@
 """
-🌐 Complete Cloud Health Management Server
+🌐 Complete Cloud Health Management Server v3.1 - Debug Enhanced
 ローカル依存ゼロ - 完全クラウド化統合システム
+
+【修正内容】:
+- ログ出力強化（gunicorn対応）
+- エラーハンドリング詳細化
+- デバッグ情報追加
+- 処理状況可視化
 
 機能:
 - HAEデータ受信 → 即座変換・統合 → 分析 → LINE通知
@@ -25,6 +31,19 @@ from typing import Dict, List, Any, Optional
 import threading
 import time
 import traceback
+import logging
+import sys
+
+# ===== ログ設定強化 =====
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.StreamHandler(sys.stderr)
+    ]
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -45,6 +64,12 @@ os.makedirs(REPORTS_DIR, exist_ok=True)
 LINE_BOT_TOKEN = os.environ.get('LINE_BOT_CHANNEL_ACCESS_TOKEN')
 LINE_USER_ID = os.environ.get('LINE_USER_ID')
 OURA_TOKEN = os.environ.get('OURA_ACCESS_TOKEN')
+
+logger.info(f"🚀 統合サーバーv3.1初期化開始")
+logger.info(f"📁 DATA_DIR: {DATA_DIR}")
+logger.info(f"📁 REPORTS_DIR: {REPORTS_DIR}")
+logger.info(f"🔐 LINE設定: {'✅完了' if LINE_BOT_TOKEN and LINE_USER_ID else '❌要設定'}")
+logger.info(f"🔐 Oura設定: {'✅完了' if OURA_TOKEN else '❌未設定'}")
 
 # ===== HAEデータ変換機能 =====
 class HAEDataConverter:
@@ -68,7 +93,9 @@ class HAEDataConverter:
     def convert_hae_to_daily_row(self, hae_data: Dict) -> Dict:
         """HAE JSONを日次データ行に変換"""
         try:
+            logger.info("🔄 HAEデータ変換開始")
             metrics = hae_data.get('data', {}).get('metrics', [])
+            logger.info(f"📊 メトリクス数: {len(metrics)}")
             
             # 基本行データ
             daily_row = {
@@ -99,6 +126,7 @@ class HAEDataConverter:
             }
             
             # メトリクス変換
+            converted_count = 0
             for metric in metrics:
                 name = metric.get('name', '')
                 if name in self.METRIC_MAPPING:
@@ -109,10 +137,15 @@ class HAEDataConverter:
                         # 最新データを使用
                         latest_point = data_points[-1]
                         daily_row[csv_column] = latest_point.get('qty')
+                        converted_count += 1
+                        logger.info(f"✅ {name} → {csv_column}: {latest_point.get('qty')}")
+            
+            logger.info(f"🎯 変換完了: {converted_count}個のメトリクス")
             
             # 体脂肪量計算
             if daily_row['体重_kg'] and daily_row['体脂肪率']:
                 daily_row['体脂肪量_kg'] = daily_row['体重_kg'] * (daily_row['体脂肪率'] / 100)
+                logger.info(f"💡 体脂肪量計算: {daily_row['体脂肪量_kg']:.2f}kg")
             
             # カロリー収支計算
             intake = daily_row['摂取カロリー_kcal'] or 0
@@ -122,11 +155,14 @@ class HAEDataConverter:
             if intake and (basal or active):
                 daily_row['消費カロリー_kcal'] = basal + active
                 daily_row['カロリー収支_kcal'] = intake - (basal + active)
+                logger.info(f"🔥 カロリー収支: {daily_row['カロリー収支_kcal']}kcal")
             
+            logger.info("✅ HAEデータ変換完了")
             return daily_row
             
         except Exception as e:
-            print(f"[ERROR] HAEデータ変換エラー: {e}")
+            logger.error(f"❌ HAEデータ変換エラー: {e}")
+            logger.error(traceback.format_exc())
             return None
 
 # ===== CSV統合機能 =====
@@ -138,15 +174,20 @@ class CSVDataIntegrator:
         self.daily_csv = self.reports_dir / "日次データ.csv"
         self.ma7_csv = self.reports_dir / "7日移動平均データ.csv"
         self.index_csv = self.reports_dir / "インデックスデータ.csv"
+        logger.info(f"📊 CSV統合機能初期化: {self.reports_dir}")
     
     def integrate_daily_data(self, daily_row: Dict) -> bool:
         """日次データをCSVに統合"""
         try:
+            logger.info("🔄 CSV統合開始")
+            
             # 既存データ読み込み
             if self.daily_csv.exists():
                 df = pd.read_csv(self.daily_csv, encoding='utf-8-sig')
+                logger.info(f"📖 既存データ読み込み: {len(df)}行")
             else:
                 df = pd.DataFrame()
+                logger.info("📝 新規データ作成")
             
             # 新データ追加（同一日付は上書き）
             new_df = pd.DataFrame([daily_row])
@@ -163,39 +204,46 @@ class CSVDataIntegrator:
             
             # 保存
             df.to_csv(self.daily_csv, index=False, encoding='utf-8-sig')
-            print(f"[SUCCESS] 日次データ統合完了: {len(df)}行")
+            logger.info(f"💾 日次データ保存完了: {len(df)}行")
             
             # 移動平均再計算
             self.recalculate_moving_averages(df)
             
+            logger.info("✅ CSV統合完了")
             return True
             
         except Exception as e:
-            print(f"[ERROR] CSV統合エラー: {e}")
+            logger.error(f"❌ CSV統合エラー: {e}")
+            logger.error(traceback.format_exc())
             return False
     
     def recalculate_moving_averages(self, df: pd.DataFrame):
         """移動平均再計算"""
         try:
+            logger.info("🔄 移動平均計算開始")
+            
             # 数値カラムの移動平均計算
             numeric_columns = ['体重_kg', '筋肉量_kg', '体脂肪量_kg', '体脂肪率', 
                              'カロリー収支_kcal', '摂取カロリー_kcal', '消費カロリー_kcal',
                              '基礎代謝_kcal', '活動カロリー_kcal', '歩数', '睡眠時間_hours']
             
+            calculated_count = 0
             for col in numeric_columns:
                 if col in df.columns:
                     df[f'{col}_ma7'] = df[col].rolling(window=7, min_periods=1).mean()
                     df[f'{col}_ma14'] = df[col].rolling(window=14, min_periods=1).mean()
                     df[f'{col}_ma28'] = df[col].rolling(window=28, min_periods=1).mean()
+                    calculated_count += 1
             
             # 移動平均データ保存
             df.to_csv(self.ma7_csv, index=False, encoding='utf-8-sig')
             df.to_csv(self.index_csv, index=False, encoding='utf-8-sig')
             
-            print("[SUCCESS] 移動平均再計算完了")
+            logger.info(f"✅ 移動平均計算完了: {calculated_count}カラム処理")
             
         except Exception as e:
-            print(f"[ERROR] 移動平均計算エラー: {e}")
+            logger.error(f"❌ 移動平均計算エラー: {e}")
+            logger.error(traceback.format_exc())
 
 # ===== 健康分析エンジン =====
 class HealthAnalyticsEngine:
@@ -204,22 +252,28 @@ class HealthAnalyticsEngine:
     def __init__(self):
         self.reports_dir = Path(REPORTS_DIR)
         self.target_body_fat_rate = 12.0
+        logger.info(f"🧠 健康分析エンジン初期化（目標体脂肪率: {self.target_body_fat_rate}%）")
     
     def analyze_health_data(self) -> Optional[Dict]:
         """健康データ分析実行"""
         try:
+            logger.info("🔄 健康分析開始")
+            
             ma7_file = self.reports_dir / "7日移動平均データ.csv"
             if not ma7_file.exists():
-                print("[ERROR] 移動平均データが見つかりません")
+                logger.error("❌ 移動平均データが見つかりません")
                 return None
             
             df = pd.read_csv(ma7_file, encoding='utf-8-sig')
             if df.empty:
-                print("[ERROR] データが空です")
+                logger.error("❌ データが空です")
                 return None
+            
+            logger.info(f"📊 分析データ: {len(df)}行")
             
             # 最新データ取得
             latest = df.iloc[-1]
+            logger.info(f"📅 最新データ日付: {latest.get('date')}")
             
             # 分析結果作成
             report = {
@@ -248,11 +302,14 @@ class HealthAnalyticsEngine:
             with open(report_file, 'w', encoding='utf-8') as f:
                 json.dump(report, f, ensure_ascii=False, indent=2)
             
-            print("[SUCCESS] 健康分析完了")
+            logger.info(f"💾 分析レポート保存: {report_file.name}")
+            logger.info(f"🎯 現在体脂肪率: {report['current_body_fat_rate']}%")
+            logger.info("✅ 健康分析完了")
             return report
             
         except Exception as e:
-            print(f"[ERROR] 健康分析エラー: {e}")
+            logger.error(f"❌ 健康分析エラー: {e}")
+            logger.error(traceback.format_exc())
             return None
 
 # ===== LINE通知機能 =====
@@ -263,16 +320,20 @@ class LineBotNotifier:
         self.token = LINE_BOT_TOKEN
         self.user_id = LINE_USER_ID
         self.api_url = "https://api.line.me/v2/bot/message/push"
+        logger.info(f"📱 LINE通知機能初期化（設定: {'✅完了' if self.token and self.user_id else '❌不完全'}）")
     
     def send_health_report(self, report: Dict) -> bool:
         """健康レポートをLINE送信"""
         if not self.token or not self.user_id:
-            print("[ERROR] LINE設定が不完全です")
+            logger.error("❌ LINE設定が不完全です")
             return False
         
         try:
+            logger.info("🔄 LINE通知送信開始")
+            
             # レポートメッセージ作成
             message = self.format_health_message(report)
+            logger.info(f"📝 メッセージ作成完了（{len(message)}文字）")
             
             headers = {
                 'Authorization': f'Bearer {self.token}',
@@ -284,18 +345,21 @@ class LineBotNotifier:
                 'messages': [{'type': 'text', 'text': message}]
             }
             
+            logger.info("🚀 LINE API呼び出し実行")
             response = requests.post(self.api_url, headers=headers, 
                                    data=json.dumps(data), timeout=10)
             
             if response.status_code == 200:
-                print("[SUCCESS] LINE通知送信完了")
+                logger.info("✅ LINE通知送信完了")
                 return True
             else:
-                print(f"[ERROR] LINE通知失敗: {response.status_code}")
+                logger.error(f"❌ LINE通知失敗: {response.status_code}")
+                logger.error(f"レスポンス: {response.text}")
                 return False
                 
         except Exception as e:
-            print(f"[ERROR] LINE通知エラー: {e}")
+            logger.error(f"❌ LINE通知エラー: {e}")
+            logger.error(traceback.format_exc())
             return False
     
     def format_health_message(self, report: Dict) -> str:
@@ -304,21 +368,23 @@ class LineBotNotifier:
         target_bf = report.get('target_body_fat_rate', 12.0)
         progress = report.get('body_fat_progress', {})
         
-        message = f"""体脂肪率進捗 | {report.get('timestamp', 'N/A')}
+        message = f"""📊体脂肪率進捗 | {report.get('timestamp', 'N/A')}
 
-{current_bf:.1f}%
+🎯 {current_bf:.1f}%
 
 現在: {current_bf:.1f}%  目標: {target_bf:.1f}%
 28日: {progress.get('28day_change', 0):+.1f}%  14日: {progress.get('14day_change', 0):+.1f}%  7日: {progress.get('7day_change', 0):+.1f}%
 
-体組成変化トレンド
+💪体組成変化トレンド
 体重: {report.get('body_composition', {}).get('weight', 0):.1f}kg
 筋肉量: {report.get('body_composition', {}).get('muscle_mass', 0):.1f}kg
 体脂肪量: {report.get('body_composition', {}).get('body_fat_mass', 0):.1f}kg
 
-カロリー収支状況
+🔥カロリー収支状況
 現在: {report.get('calorie_balance', {}).get('current', 0):.0f}kcal
-7日平均: {report.get('calorie_balance', {}).get('7day_avg', 0):.0f}kcal"""
+7日平均: {report.get('calorie_balance', {}).get('7day_avg', 0):.0f}kcal
+
+【v3.1】統合サーバー稼働中✅"""
 
         return message
 
@@ -331,40 +397,45 @@ class CompleteProcessor:
         self.integrator = CSVDataIntegrator()
         self.analytics = HealthAnalyticsEngine()
         self.notifier = LineBotNotifier()
+        logger.info("🚀 統合処理エンジン初期化完了")
     
     def process_hae_data_complete(self, hae_data: Dict) -> bool:
         """HAEデータ受信から通知まで完全処理"""
         try:
-            print("[INFO] 統合処理開始...")
+            logger.info("🎯 ===== 統合処理開始 =====")
             
             # 1. HAE → CSV変換
+            logger.info("【STEP 1】 HAEデータ変換実行")
             daily_row = self.converter.convert_hae_to_daily_row(hae_data)
             if not daily_row:
-                print("[ERROR] データ変換失敗")
+                logger.error("❌ データ変換失敗")
                 return False
             
             # 2. CSV統合・移動平均
+            logger.info("【STEP 2】 CSV統合・移動平均実行")
             if not self.integrator.integrate_daily_data(daily_row):
-                print("[ERROR] CSV統合失敗")
+                logger.error("❌ CSV統合失敗")
                 return False
             
             # 3. 健康分析
+            logger.info("【STEP 3】 健康分析実行")
             report = self.analytics.analyze_health_data()
             if not report:
-                print("[ERROR] 健康分析失敗")
+                logger.error("❌ 健康分析失敗")
                 return False
             
             # 4. LINE通知
+            logger.info("【STEP 4】 LINE通知実行")
             if not self.notifier.send_health_report(report):
-                print("[WARNING] LINE通知失敗")
+                logger.warning("⚠️ LINE通知失敗（処理は継続）")
                 # 通知失敗でも処理は成功とする
             
-            print("[SUCCESS] 統合処理完了！")
+            logger.info("🎉 ===== 統合処理完了 =====")
             return True
             
         except Exception as e:
-            print(f"[ERROR] 統合処理エラー: {e}")
-            print(traceback.format_exc())
+            logger.error(f"❌ 統合処理エラー: {e}")
+            logger.error(traceback.format_exc())
             return False
 
 # ===== グローバル統合処理インスタンス =====
@@ -374,10 +445,12 @@ processor = CompleteProcessor()
 @app.route('/', methods=['GET'])
 def root():
     """ルートパス"""
+    logger.info("🌐 ルートパスアクセス")
     return jsonify({
         'status': 'healthy',
         'service': 'Complete Cloud Health Management Server',
-        'version': '3.0',
+        'version': '3.1',
+        'debug_mode': 'enhanced_logging',
         'features': ['HAE Reception', 'Auto Analysis', 'LINE Notification'],
         'endpoints': {
             'health_data': '/health-data (POST)',
@@ -394,7 +467,10 @@ def receive_health_data():
         session_id = request.headers.get('session-id', 'unknown')
         data = request.get_json()
         
+        logger.info(f"🎯 ===== HAEデータ受信 (Session: {session_id}) =====")
+        
         if not data:
+            logger.error("❌ データなし")
             return jsonify({'error': 'No data received'}), 400
         
         # 生データ保存
@@ -405,13 +481,18 @@ def receive_health_data():
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2, default=str)
         
-        print(f"[INFO] HAEデータ受信 (Session: {session_id}) - {filename}")
+        logger.info(f"💾 HAEデータ保存: {filename}")
         
         # 【重要】即座に統合処理実行
+        logger.info("🚀 統合処理開始")
         success = processor.process_hae_data_complete(data)
         
         metrics = data.get('data', {}).get('metrics', [])
         workouts = data.get('data', {}).get('workouts', [])
+        
+        logger.info(f"📊 メトリクス: {len(metrics)}個")
+        logger.info(f"🏃 ワークアウト: {len(workouts)}個")
+        logger.info(f"🎯 処理結果: {'✅成功' if success else '❌失敗'}")
         
         return jsonify({
             'status': 'success',
@@ -420,29 +501,46 @@ def receive_health_data():
             'workouts_count': len(workouts),
             'session_id': session_id,
             'processing_success': success,
-            'features_executed': ['Data Conversion', 'CSV Integration', 'Health Analysis', 'LINE Notification']
+            'features_executed': ['Data Conversion', 'CSV Integration', 'Health Analysis', 'LINE Notification'],
+            'debug_info': {
+                'timestamp': timestamp,
+                'filename': filename,
+                'data_dir': DATA_DIR,
+                'reports_dir': REPORTS_DIR
+            }
         })
     
     except Exception as e:
-        print(f"[ERROR] データ受信・処理エラー: {str(e)}")
+        logger.error(f"❌ データ受信・処理エラー: {str(e)}")
+        logger.error(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 @app.route('/health-check', methods=['GET'])
 def health_check():
     """ヘルスチェック"""
+    logger.info("🔍 ヘルスチェック実行")
     return jsonify({
         'status': 'OK',
+        'version': '3.1',
         'timestamp': datetime.now().isoformat(),
         'line_configured': bool(LINE_BOT_TOKEN and LINE_USER_ID),
-        'oura_configured': bool(OURA_TOKEN)
+        'oura_configured': bool(OURA_TOKEN),
+        'directories': {
+            'data_dir': DATA_DIR,
+            'reports_dir': REPORTS_DIR,
+            'data_dir_exists': os.path.exists(DATA_DIR),
+            'reports_dir_exists': os.path.exists(REPORTS_DIR)
+        }
     })
 
 @app.route('/latest-data', methods=['GET'])
 def get_latest_data():
     """最新データ確認"""
     try:
+        logger.info("📋 最新データ確認")
         files = [f for f in os.listdir(DATA_DIR) if f.endswith('.json')]
         if not files:
+            logger.warning("📭 データファイルなし")
             return jsonify({'message': 'No data files found'})
         
         latest_file = max(files, key=lambda x: os.path.getctime(os.path.join(DATA_DIR, x)))
@@ -450,6 +548,7 @@ def get_latest_data():
         with open(os.path.join(DATA_DIR, latest_file), 'r', encoding='utf-8') as f:
             data = json.load(f)
         
+        logger.info(f"📄 最新ファイル: {latest_file}")
         return jsonify({
             'latest_file': latest_file,
             'data_preview': {
@@ -460,18 +559,21 @@ def get_latest_data():
         })
     
     except Exception as e:
+        logger.error(f"❌ 最新データ確認エラー: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/manual-analysis', methods=['POST'])
 def manual_analysis():
     """手動分析実行"""
     try:
-        print("[INFO] 手動分析実行...")
+        logger.info("🧠 ===== 手動分析実行 =====")
         report = processor.analytics.analyze_health_data()
         
         if report:
             # LINE通知送信
             notification_success = processor.notifier.send_health_report(report)
+            
+            logger.info(f"📱 LINE通知: {'✅成功' if notification_success else '❌失敗'}")
             
             return jsonify({
                 'status': 'success',
@@ -480,21 +582,35 @@ def manual_analysis():
                 'line_notification': notification_success
             })
         else:
+            logger.error("❌ 分析失敗")
             return jsonify({'error': 'Analysis failed'}), 500
             
     except Exception as e:
+        logger.error(f"❌ 手動分析エラー: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+# ===== アプリケーション初期化 =====
+def initialize_app():
+    """アプリケーション初期化"""
+    logger.info("🌐 Complete Cloud Health Management Server v3.1")
+    logger.info("=" * 60)
+    logger.info("🎯 機能: HAE受信 → 変換 → 統合 → 分析 → LINE通知（完全自動）")
+    logger.info(f"📱 LINE設定: {'✅完了' if LINE_BOT_TOKEN and LINE_USER_ID else '❌要設定'}")
+    logger.info(f"🔍 Oura設定: {'✅完了' if OURA_TOKEN else '❌未設定'}")
+    logger.info(f"📁 データディレクトリ: {DATA_DIR}")
+    logger.info(f"📊 レポートディレクトリ: {REPORTS_DIR}")
+    logger.info("=" * 60)
+    logger.info("✅ 統合サーバーv3.1起動完了")
+
+# ===== アプリケーション起動時処理 =====
+initialize_app()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     
-    print("🌐 Complete Cloud Health Management Server v3.0")
-    print("=" * 60)
-    print(f"📱 HAE送信先: http://localhost:{port}/health-data")
-    print(f"🔍 ヘルスチェック: http://localhost:{port}/health-check")
-    print(f"📊 手動分析: http://localhost:{port}/manual-analysis (POST)")
-    print("=" * 60)
-    print("✅ 機能: HAE受信 → 変換 → 統合 → 分析 → LINE通知（完全自動）")
-    print(f"✅ LINE設定: {'完了' if LINE_BOT_TOKEN and LINE_USER_ID else '要設定'}")
+    logger.info(f"🚀 開発モード起動: http://localhost:{port}")
+    logger.info(f"📡 HAE送信先: http://localhost:{port}/health-data")
+    logger.info(f"🔍 ヘルスチェック: http://localhost:{port}/health-check")
+    logger.info(f"📊 手動分析: http://localhost:{port}/manual-analysis (POST)")
     
     app.run(host='0.0.0.0', port=port, debug=False)
