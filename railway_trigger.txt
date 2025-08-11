@@ -1,3 +1,4 @@
-Deploy trigger for Phase 1 bug fixes - 2025-08-11 15:47
-Fixing Railway deployment issues
-Force deploy: Sleep time fix + sugar mapping fix
+🚨 EMERGENCY Deploy Trigger - GitHub Connection Restored
+2025-08-11 16:05 - Force deploy after GitHub reconnection
+Phase 1 fixes: Sleep time + Sugar mapping
+Snapshot recovery attempt via webhook trigger
