@@ -1,4 +1,3 @@
-# Railway Deploy Trigger
-# Force GitHub webhook activation
-timestamp = "2025-08-11 08:28"
-trigger_id = "railway-force-deploy-001"
+Deploy trigger for Phase 1 bug fixes - 2025-08-11 15:47
+Fixing Railway deployment issues
+Force deploy: Sleep time fix + sugar mapping fix
