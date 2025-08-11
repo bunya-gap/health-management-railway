@@ -721,5 +721,3 @@ if __name__ == '__main__':
     logger.info(f"📅 期間データ確認: http://localhost:{port}/csv-dates?start_date=2025-08-08&end_date=2025-08-11")
     
     app.run(host='0.0.0.0', port=port, debug=False)
-
-✅ 😀 𠮷 👨‍👩‍👧‍👦
