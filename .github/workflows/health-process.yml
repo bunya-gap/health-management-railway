@@ -1,0 +1,132 @@
+name: 🏥 Health Data Processing
+
+on:
+  # 手動実行
+  workflow_dispatch:
+    inputs:
+      analysis_type:
+        description: '分析タイプ'
+        required: false
+        default: 'manual'
+        type: choice
+        options:
+        - 'manual'
+        - 'full_analysis'
+  
+  # 定期実行（毎日 8:00, 12:00, 18:00, 22:00 JST）
+  schedule:
+    - cron: '0 23,3,9,13 * * *'  # UTC時間（JST-9時間）
+  
+  # リポジトリへのプッシュ時（データファイル更新時）
+  push:
+    paths:
+      - 'health_api_data/*.json'
+      - 'reports/*.csv'
+      - 'health_processor.py'
+
+jobs:
+  health-analysis:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📁 リポジトリチェックアウト
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+    
+    - name: 🐍 Python環境セットアップ
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: 📦 依存関係インストール
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        echo "✅ Python依存関係インストール完了"
+    
+    - name: 📂 ディレクトリ作成
+      run: |
+        mkdir -p health_api_data
+        mkdir -p reports
+        echo "📁 データディレクトリ作成完了"
+        ls -la
+    
+    - name: 🔐 環境変数確認
+      run: |
+        echo "GitHub Actions環境: $GITHUB_ACTIONS"
+        echo "イベント種別: $GITHUB_EVENT_NAME"
+        echo "ワークスペース: $GITHUB_WORKSPACE"
+        echo "LINE設定: ${{ secrets.LINE_BOT_CHANNEL_ACCESS_TOKEN != '' }}"
+        echo "OURA設定: ${{ secrets.OURA_ACCESS_TOKEN != '' }}"
+        echo "USER設定: ${{ secrets.LINE_USER_ID != '' }}"
+    
+    - name: 🏥 健康データ処理実行
+      env:
+        LINE_BOT_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_BOT_CHANNEL_ACCESS_TOKEN }}
+        LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+        OURA_ACCESS_TOKEN: ${{ secrets.OURA_ACCESS_TOKEN }}
+        GITHUB_ACTIONS: true
+        GITHUB_EVENT_NAME: ${{ github.event_name }}
+        GITHUB_WORKSPACE: ${{ github.workspace }}
+      run: |
+        echo "🚀 体組成管理システム開始"
+        echo "📅 実行時刻: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "🔄 実行モード: $GITHUB_EVENT_NAME"
+        python health_processor.py
+        echo "✅ 健康データ処理完了"
+    
+    - name: 📊 処理結果確認
+      run: |
+        echo "📁 生成ファイル確認:"
+        ls -la reports/ 2>/dev/null || echo "reportsディレクトリなし"
+        ls -la health_api_data/ 2>/dev/null || echo "health_api_dataディレクトリなし"
+        
+        echo ""
+        echo "📊 CSVファイルサイズ確認:"
+        if [ -f "reports/daily_health_data.csv" ]; then
+          wc -l reports/daily_health_data.csv
+          echo "✅ 日次データCSV存在"
+        else
+          echo "⚠️ 日次データCSV未生成"
+        fi
+        
+        if [ -f "reports/health_data_with_ma.csv" ]; then
+          wc -l reports/health_data_with_ma.csv
+          echo "✅ 移動平均データCSV存在"
+        else
+          echo "⚠️ 移動平均データCSV未生成"
+        fi
+    
+    - name: 💾 結果データコミット
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Actions Health System"
+        
+        # 変更があるかチェック
+        if [[ -n $(git status --porcelain) ]]; then
+          echo "📝 変更ファイル検出 - コミット実行"
+          git add reports/ health_api_data/ 2>/dev/null || true
+          
+          # 変更がある場合のみコミット
+          if [[ -n $(git diff --cached) ]]; then
+            git commit -m "📊 健康データ自動更新 - $(date '+%Y-%m-%d %H:%M:%S') [GitHub Actions]"
+            git push
+            echo "✅ データ自動保存完了"
+          else
+            echo "📭 コミット対象の変更なし"
+          fi
+        else
+          echo "📭 変更ファイルなし - コミットスキップ"
+        fi
+    
+    - name: 🎉 実行完了通知
+      run: |
+        echo "🎊 ===== GitHub Actions 体組成管理システム実行完了 ====="
+        echo "📅 完了時刻: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "🔄 実行モード: $GITHUB_EVENT_NAME"
+        echo "💰 月額費用: ¥0 (GitHub Actions無料枠)"
+        echo "🎯 次回実行: 定期実行 or 手動実行 or データプッシュ"
+        echo "✅ 😀 𠮷 👨‍👩‍👧‍👦"
